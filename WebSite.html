@@ -229,7 +229,7 @@
     .btn-secondary {
       display:flex; align-items:center; gap:8px;
       background:transparent; color:#fff;
-      font-weight:600; padding:14px 32px; border-radius:9999px;
+      font-weight:600; padding:14px 32px; border-radius:9999py;
       border:1px solid rgba(168,85,247,0.5); cursor:pointer; font-size:1rem;
       transition:all 0.3s;
     }
@@ -968,7 +968,6 @@
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
-        // Trigger input animations
         document.querySelectorAll('.input-wrap').forEach(w => {
           w.style.animationPlayState = 'running';
         });
@@ -1000,7 +999,6 @@
       if (valid) {
         wrap.classList.remove('has-error');
         if (check) check.classList.add('show');
-        // Remove old error
         const err = wrap.querySelector('.error-msg');
         if (err) err.remove();
       } else {
@@ -1024,41 +1022,112 @@
     });
   });
 
-  // ===== SUBMIT BUTTON =====
+  // ===== VAPI INTEGRATION =====
+  let vapiInstance = null;
+  const VAPI_CONFIG = {
+    apiKey: "8e64bde1-ec72-44bc-a042-ce23ff861643",
+    assistant: "c407de3b-5da2-4de8-ba5b-749fd19c97d6"
+  };
+
+  // Charger le SDK VAPI
+  function loadVapiSDK() {
+    return new Promise((resolve) => {
+      if (window.vapiSDK) {
+        resolve();
+        return;
+      }
+      
+      const script = document.createElement('script');
+      script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+      script.defer = true;
+      script.async = true;
+      
+      script.onload = () => {
+        resolve();
+      };
+      
+      document.head.appendChild(script);
+    });
+  }
+
+  // Initialiser VAPI
+  async function initializeVapi() {
+    try {
+      await loadVapiSDK();
+      
+      if (window.vapiSDK) {
+        vapiInstance = window.vapiSDK.run({
+          apiKey: VAPI_CONFIG.apiKey,
+          assistant: VAPI_CONFIG.assistant,
+          config: {
+            // Configuration optionnelle
+            disableInitialMessage: false,
+            messageCharacterLimit: 1000,
+          }
+        });
+        console.log('✅ VAPI initialized successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error initializing VAPI:', error);
+    }
+  }
+
+  // ===== SUBMIT BUTTON - Lancer l'appel VAPI =====
   function handleLaunch() {
     const btn = document.getElementById('btnLaunch');
+    
+    // Vérifier que le formulaire est valide
+    const fname = document.getElementById('fname').value;
+    const email = document.getElementById('email').value;
+    const phone = document.getElementById('phone').value;
+    
+    if (!fname || !email || !phone) {
+      alert('❌ Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
     btn.classList.add('submitting');
-    btn.textContent = 'Connecting...';
-    setTimeout(() => {
-      btn.classList.remove('submitting');
-      btn.textContent = 'Launch The AI Chat Demo';
-    }, 2000);
-  }
-  <script>
-  var vapiInstance = null;
-  const assistant = "c407de3b-5da2-4de8-ba5b-749fd19c97d6"; // Substitute with your assistant ID
-  const apiKey = "8e64bde1-ec72-44bc-a042-ce23ff861643"; // Substitute with your Public key from Vapi Dashboard.
-  const buttonConfig = {}; // Modify this as required
+    btn.textContent = 'Connecting to AI Employee...';
 
-  (function (d, t) {
-    var g = document.createElement(t),
-      s = d.getElementsByTagName(t)[0];
-    g.src =
-      "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-    g.defer = true;
-    g.async = true;
-    s.parentNode.insertBefore(g, s);
-
-    g.onload = function () {
-      vapiInstance = window.vapiSDK.run({
-        apiKey: apiKey, // mandatory
-        assistant: assistant, // mandatory
-        config: buttonConfig, // optional
+    // Si VAPI est chargé, lancer l'appel
+    if (vapiInstance) {
+      try {
+        // Passer les infos du formulaire à VAPI
+        vapiInstance.start({
+          phoneNumber: phone,
+          firstName: fname,
+          email: email,
+        });
+        console.log('✅ VAPI call started');
+      } catch (error) {
+        console.error('❌ Error starting VAPI call:', error);
+        btn.classList.remove('submitting');
+        btn.textContent = 'Launch The AI Chat Demo';
+        alert('Erreur lors du démarrage de l\'appel. Veuillez réessayer.');
+      }
+    } else {
+      console.warn('⚠️ VAPI not loaded yet, initializing...');
+      initializeVapi().then(() => {
+        // Relancer après initialisation
+        handleLaunch();
       });
-    };
-  })(document, "script");
+    }
+  }
+
+  // Initialiser VAPI au chargement de la page
+  window.addEventListener('DOMContentLoaded', () => {
+    initializeVapi();
+  });
+
+  // Fallback si DOMContentLoaded a déjà déclenché
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeVapi();
+    });
+  } else {
+    initializeVapi();
+  }
 </script>
 
-</script>
 </body>
 </html>
